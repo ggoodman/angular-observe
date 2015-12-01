@@ -1,0 +1,30 @@
+{
+  "name": "angular-observe",
+  "version": "1.0.0",
+  "description": "Angular directive for representing the different states of an Observable.",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack -p --output-filename='[name].min.js' && webpack --output-filename='[name].js'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/ggoodman/angular-observe.git"
+  },
+  "keywords": [
+    "angular",
+    "observable",
+    "rxjs",
+    "rx",
+    "directive",
+    "angular.js"
+  ],
+  "author": "Geoff Goodman",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ggoodman/angular-observe/issues"
+  },
+  "homepage": "https://github.com/ggoodman/angular-observe#readme",
+  "devDependencies": {
+    "webpack": "^1.12.9"
+  }
+}
