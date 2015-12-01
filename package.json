@@ -2,7 +2,7 @@
   "name": "angular-observe",
   "version": "1.0.0",
   "description": "Angular directive for representing the different states of an Observable.",
-  "main": "index.js",
+  "main": "./dist/angular-observe.js",
   "scripts": {
     "build": "webpack -p --output-filename='[name].min.js' && webpack --output-filename='[name].js'"
   },
