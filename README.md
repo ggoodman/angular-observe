@@ -5,7 +5,7 @@ Subscribe to an observable and render different markup depending on the observab
 ### Example with all four states defined:
 
 ```html
-<div observe="observable">
+<div async-bind="observable">
     <loading>Loading...</loading>
     <active>The latest value is: <code>{{$value}}</code>.</active>
     <complete>The observable completed. It's final value was <code>{{$value}}</code>.</complete>
@@ -16,7 +16,7 @@ Subscribe to an observable and render different markup depending on the observab
 ### Example using only the implicit `active` state:
 
 ```html
-<div observe="observable">
+<div async-bind="observable">
     <span>Current value: <code>{{$value}}</code></span>
 </div>
 ```
@@ -37,7 +37,7 @@ State | Explanation
 Each of the following states can have its own markup nested in an element with the same name as the state. For example, to show the current value, you would use:
 
 ```html
-<div observe="observable">
+<div async-bind="observable">
     <active>Currrent value: {{$value}}</active>
 </div>
 ```
