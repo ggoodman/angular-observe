@@ -4,7 +4,7 @@ module.exports = 'filearts.angularObserve';
 
 var mod = Angular.module(module.exports, []);
 
-mod.directive('observe', ['$compile', function ($compile) {
+mod.directive('observe', ['$compile', '$timeout', function ($compile, $timeout) {
     return {
         restrict: 'EA',
         scope: true,
@@ -15,10 +15,21 @@ mod.directive('observe', ['$compile', function ($compile) {
             error: '?error',
         },
         link: function ($scope, $element, $attrs, ctl, $transclude) {
-            // Subscribe to the observable
-            var stateLinkFunctions = {};
             var currentState;
-            var observable = $scope.$eval($attrs.observe || $attrs.source);
+            var stateLinkFunctions = {};
+            var source = $scope.$eval($attrs.observe || $attrs.source);
+            
+            if (!source) {
+                console.warn('The `observable` directive requires a source observable.');
+                return;
+            }
+            
+            // Subscribe to the observable
+            var observable = typeof source.subscribe === 'function'
+                ?   source
+                :   typeof source.then === 'function'
+                    ?   liftPromise(source)
+                    :   liftValue(source);
             var subscription = observable.subscribe(onNext, onError, onComplete);
             
             $transclude(compileState.bind(null, 'active', false), null, '');
@@ -65,10 +76,37 @@ mod.directive('observe', ['$compile', function ($compile) {
                 }
             }
             
+            function liftPromise(source) {
+                return {
+                    subscribe: function (onNext, onError, onComplete) {
+                        source.then(onNext, onError, onNext)
+                            .catch(function (reason) {
+                                return reason;
+                            })
+                            .then(onComplete);
+                        
+                        return {
+                            unsubscribe: Angular.noop,
+                        };
+                    }
+                };
+            }
+            
+            function liftValue(source) {
+                return {
+                    subscribe: function (onNext, onError, onComplete) {
+                        $timeout(onNext.bind(null, source), 0, false)
+                            .then(onComplete);
+                        
+                        return {
+                            unsubscribe: Angular.noop,
+                        };
+                    }
+                };
+            }
+            
             function setState(state, skipDigest) {
                 if (state !== currentState) {
-                    $element.empty();
-                    
                     var linkFunction = stateLinkFunctions[state];
                     
                     if (!linkFunction) {
@@ -77,12 +115,13 @@ mod.directive('observe', ['$compile', function ($compile) {
                     
                     var replacement = linkFunction($scope);
                     
+                    $element.empty();
                     $element.append(replacement);
                     
                     currentState = state;
                 }
                 
-                if (!skipDigest) {
+                if (!skipDigest && !$scope.$root.$$phase) {
                     $scope.$digest(true);
                 }
             }
