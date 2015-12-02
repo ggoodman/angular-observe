@@ -35,6 +35,8 @@ mod.directive('observe', ['$compile', '$timeout', function ($compile, $timeout) 
                 return;
             }
             
+            setState('loading', true);
+            
             // Subscribe to the observable
             var observable = typeof source.subscribe === 'function'
                 ?   source
@@ -42,8 +44,6 @@ mod.directive('observe', ['$compile', '$timeout', function ($compile, $timeout) 
                     ?   liftPromise(source)
                     :   liftValue(source);
             var subscription = observable.subscribe(onNext, onError, onComplete);
-            
-            setState('loading', true);
 
             // Unsubscribe when this element is destroyed
             $scope.$on('$destroy', function() {
