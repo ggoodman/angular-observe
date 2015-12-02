@@ -1,6 +1,6 @@
 {
   "name": "angular-observe",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Angular directive for representing the different states of an Observable.",
   "main": "./dist/angular-observe.js",
   "scripts": {
