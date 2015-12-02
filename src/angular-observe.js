@@ -17,29 +17,36 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
         return function postLink($scope, $element, $attrs) {
             var childScope;
             var currentState;
+            var subscription;
             var isolateScope = $rootScope.$new(true, $scope);
-            var source = $scope.$eval($attrs.asyncBind || $attrs.source);
+            
+            var sourceModel = $attrs.asyncBind || $attrs.source;
             
             $element.empty();
             
-            if (!source) {
-                console.warn('The `observable` directive requires a source observable.');
-                return;
-            }
-            
-            setState('loading');
-            
-            // Subscribe to the observable
-            var observable = typeof source.subscribe === 'function'
-                ?   source
-                :   typeof source.then === 'function'
-                    ?   liftPromise(source)
-                    :   liftValue(source);
-            var subscription = observable.subscribe(onNext, onError, onComplete);
+            $scope.$watch(sourceModel, function (source) {
+                if (subscription) {
+                    subscription.unsubscribe();
+                }
+                
+                setState('loading');
+                
+                // Lift the source to an Observable-compatible interface
+                var observable = typeof source.subscribe === 'function'
+                    ?   source
+                    :   typeof source.then === 'function'
+                        ?   liftPromise(source)
+                        :   liftValue(source);
+                
+                // Subscribe to the observable
+                subscription = observable.subscribe(onNext, onError, onComplete);
+            });
     
             // Unsubscribe when this element is destroyed
             $scope.$on('$destroy', function() {
-                subscription.unsubscribe();
+                if (subscription) {
+                    subscription.unsubscribe();
+                }
             });
             
             function onNext(val) {
@@ -102,11 +109,31 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
     function liftPromise(source) {
         return {
             subscribe: function (onNext, onError, onComplete) {
-                source.then(onNext, onError, onNext)
-                    .catch(function (reason) {
-                        return reason;
-                    })
-                    .then(onComplete);
+                // I don't want to depend on any single Promise implementation
+                // so I can't rely on re-throwing the error. Instead, I guard
+                // on `failed` for the invocation of `onComplete`.
+                var failed = false;
+                
+                var _onNext = function (val) {
+                    onNext(val);
+                    
+                    return val;
+                };
+                
+                var _onError = function (val) {
+                    onError(val);
+                    
+                    failed = true;
+                };
+                
+                var _onComplete = function () {
+                    if (!failed) {
+                        onComplete();
+                    }
+                };
+                
+                source.then(_onNext, _onError, onNext)
+                    .then(_onComplete);
                 
                 return {
                     unsubscribe: Angular.noop,
@@ -118,6 +145,9 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
     function liftValue(source) {
         return {
             subscribe: function (onNext, onError, onComplete) {
+                // We are already using Angular so let's just leverage
+                // an existing service (`$timeout`) to fire the `onNext` and
+                // `onComplete` callbacks asynchronously.
                 $timeout(onNext.bind(null, source), 0, false)
                     .then(onComplete);
                 
@@ -174,5 +204,4 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
         
         return stateLinkFunctions;
     }
-
 }]);
