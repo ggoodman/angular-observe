@@ -4,128 +4,169 @@ module.exports = 'filearts.angularObserve';
 
 var mod = Angular.module(module.exports, []);
 
-mod.directive('observe', ['$compile', '$timeout', function ($compile, $timeout) {
+mod.directive('observe', ['$compile', '$q', '$rootScope', '$timeout', function ($compile, $q, $rootScope, $timeout) {
     return {
         restrict: 'EA',
         scope: true,
-        transclude: {
-            loading: '?loading',
-            active: '?active',
-            complete: '?complete',
-            error: '?error',
-        },
-        link: function ($scope, $element, $attrs, ctl, $transclude) {
-            var currentState;
-            var stateLinkFunctions = {};
-            var source = $scope.$eval($attrs.observe || $attrs.source);
+        compile: function (tElement) {
+            var stateLinkFunctions = getStateLinkFunctions();
             
-            if (!source) {
-                console.warn('The `observable` directive requires a source observable.');
-                return;
-            }
+            tElement.empty();
             
-            $transclude(compileState.bind(null, 'active', false), null, '');
-            $transclude(compileState.bind(null, 'loading', true), null, 'loading');
-            $transclude(compileState.bind(null, 'active', true), null, 'active');
-            $transclude(compileState.bind(null, 'complete', true), null, 'complete');
-            $transclude(compileState.bind(null, 'error', true), null, 'error');
+            return link;
             
-            if (!stateLinkFunctions.active) {
-                console.warn('The `observable` directive requires at least one child element.');
-                return;
-            }
-            
-            setState('loading', true);
-            
-            // Subscribe to the observable
-            var observable = typeof source.subscribe === 'function'
-                ?   source
-                :   typeof source.then === 'function'
-                    ?   liftPromise(source)
-                    :   liftValue(source);
-            var subscription = observable.subscribe(onNext, onError, onComplete);
-
-            // Unsubscribe when this element is destroyed
-            $scope.$on('$destroy', function() {
-                subscription.unsubscribe();
-            });
-            
-            function onNext(val) {
-                $scope.$value = val;
-
-                setState('active');
-            }
-            
-            function onComplete(val) {
-                setState('complete');
-            }
-            
-            function onError(error) {
-                $scope.$error = error;
-                setState('error');
-            }
-            
-            function compileState(state, useContents, clone) {
-                var contents = useContents
-                    ?   clone.contents()
-                    :   clone;
+            function link($scope, $element, $attrs) {
+                var childScope;
+                var currentState;
+                var isolateScope = $rootScope.$new(true, $scope);
+                var source = $scope.$eval($attrs.observe || $attrs.source);
                 
-                if (contents.length) {
-                    var linkFunction = $compile(contents);
-                
-                    stateLinkFunctions[state] = linkFunction;
+                if (!source) {
+                    console.warn('The `observable` directive requires a source observable.');
+                    return;
                 }
-            }
-            
-            function liftPromise(source) {
-                return {
-                    subscribe: function (onNext, onError, onComplete) {
-                        source.then(onNext, onError, onNext)
-                            .catch(function (reason) {
-                                return reason;
-                            })
-                            .then(onComplete);
+                
+                setState('loading');
+                
+                // Subscribe to the observable
+                var observable = typeof source.subscribe === 'function'
+                    ?   source
+                    :   typeof source.then === 'function'
+                        ?   liftPromise(source)
+                        :   liftValue(source);
+                var subscription = observable.subscribe(onNext, onError, onComplete);
+    
+                // Unsubscribe when this element is destroyed
+                $scope.$on('$destroy', function() {
+                    subscription.unsubscribe();
+                });
+                
+                function liftPromise(source) {
+                    return {
+                        subscribe: function (onNext, onError, onComplete) {
+                            source.then(onNext, onError, onNext)
+                                .catch(function (reason) {
+                                    return reason;
+                                })
+                                .then(onComplete);
+                            
+                            return {
+                                unsubscribe: Angular.noop,
+                            };
+                        }
+                    };
+                }
+                
+                function liftValue(source) {
+                    return {
+                        subscribe: function (onNext, onError, onComplete) {
+                            $timeout(onNext.bind(null, source), 0, false)
+                                .then(onComplete);
+                            
+                            return {
+                                unsubscribe: Angular.noop,
+                            };
+                        }
+                    };
+                }
+                
+                function onNext(val) {
+                    var forceLink = !isPrimitive(isolateScope.$value)
+                        || !isPrimitive(val);
+                    
+                    isolateScope.$value = val;
+    
+                    setState('active', forceLink);
+                    
+                    function isPrimitive(object) {
+                        var type = typeof object;
                         
-                        return {
-                            unsubscribe: Angular.noop,
-                        };
+                        return type === 'boolean'
+                            || type === 'number'
+                            || type === 'string';
                     }
-                };
-            }
-            
-            function liftValue(source) {
-                return {
-                    subscribe: function (onNext, onError, onComplete) {
-                        $timeout(onNext.bind(null, source), 0, false)
-                            .then(onComplete);
-                        
-                        return {
-                            unsubscribe: Angular.noop,
-                        };
-                    }
-                };
-            }
-            
-            function setState(state, skipDigest) {
-                if (state !== currentState) {
-                    var linkFunction = stateLinkFunctions[state];
-                    
-                    $element.empty();
-                    
-                    if (!linkFunction) {
-                        return;
-                    }
-                    
-                    var replacement = linkFunction($scope);
-                    
-                    $element.append(replacement);
-                    
-                    currentState = state;
                 }
                 
-                if (!skipDigest && !$scope.$root.$$phase) {
-                    $scope.$digest(true);
+                function onComplete(val) {
+                    setState('complete');
                 }
+                
+                function onError(error) {
+                    isolateScope.$error = error;
+                    
+                    setState('error');
+                }
+                
+                function setState(state, forceLink) {
+                    if (forceLink || state !== currentState) {
+                        var linkFunction = stateLinkFunctions[state];
+                        
+                        $element.empty();
+                        
+                        if (childScope) {
+                            childScope.$destroy();
+                        }
+                        
+                        if (!linkFunction) {
+                            return;
+                        }
+                        
+                        childScope = isolateScope.$new();
+                        currentState = state;
+                        
+                        var replacement = linkFunction(childScope);
+                        
+                        $element.append(replacement);
+                    }
+                    
+                    if (!isolateScope.$root.$$phase) {
+                        isolateScope.$digest(true);
+                    }
+                }
+            }
+            
+            function getStateLinkFunctions() {
+                var stateLinkFunctions = {};
+                var stateTemplates = {
+                    loading: [],
+                    active: [],
+                    error: [],
+                    complete: [],
+                };
+                var template = [];
+                
+                Angular.forEach(tElement.contents(), function (node) {
+                    switch (node.nodeName.toLowerCase()) {
+                        case 'loading': return stateTemplates.loading.push(node);
+                        case 'active': return stateTemplates.active.push(node);
+                        case 'error': return stateTemplates.error.push(node);
+                        case 'complete': return stateTemplates.complete.push(node);
+                        default: return template.push(node);
+                    }
+                });
+                
+                var hasStateTemplates = false;
+                
+                Angular.forEach(stateTemplates, function (template, state) {
+                    if (template.length) {
+                        hasStateTemplates = true;
+                        
+                        stateLinkFunctions[state] = $compile(template);
+                    }
+                });
+                
+                if (!hasStateTemplates) {
+                    if (!template.length) {
+                        template.push(document.createTextNode('{{$value}}'));
+                    }
+                        
+                    var linkFunction = $compile(template);
+                    
+                    stateLinkFunctions.active = linkFunction;
+                    stateLinkFunctions.complete = linkFunction;
+                }
+                
+                return stateLinkFunctions;
             }
         }
     };
