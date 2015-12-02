@@ -18,7 +18,7 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
             var childScope;
             var currentState;
             var isolateScope = $rootScope.$new(true, $scope);
-            var source = $scope.$eval($attrs.observe || $attrs.source);
+            var source = $scope.$eval($attrs.asyncBind || $attrs.source);
             
             $element.empty();
             
