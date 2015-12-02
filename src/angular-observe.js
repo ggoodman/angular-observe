@@ -110,13 +110,14 @@ mod.directive('observe', ['$compile', '$timeout', function ($compile, $timeout) 
                 if (state !== currentState) {
                     var linkFunction = stateLinkFunctions[state];
                     
+                    $element.empty();
+                    
                     if (!linkFunction) {
                         return;
                     }
                     
                     var replacement = linkFunction($scope);
                     
-                    $element.empty();
                     $element.append(replacement);
                     
                     currentState = state;
