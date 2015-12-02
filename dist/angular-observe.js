@@ -88,9 +88,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	                setState('loading');
 	                
 	                // Lift the source to an Observable-compatible interface
-	                var observable = typeof source.subscribe === 'function'
+	                var observable = source && typeof source.subscribe === 'function'
 	                    ?   source
-	                    :   typeof source.then === 'function'
+	                    :   source && typeof source.then === 'function'
 	                        ?   liftPromise(source)
 	                        :   liftValue(source);
 	                
