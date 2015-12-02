@@ -80,14 +80,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	                return;
 	            }
 	            
-	            // Subscribe to the observable
-	            var observable = typeof source.subscribe === 'function'
-	                ?   source
-	                :   typeof source.then === 'function'
-	                    ?   liftPromise(source)
-	                    :   liftValue(source);
-	            var subscription = observable.subscribe(onNext, onError, onComplete);
-	            
 	            $transclude(compileState.bind(null, 'active', false), null, '');
 	            $transclude(compileState.bind(null, 'loading', true), null, 'loading');
 	            $transclude(compileState.bind(null, 'active', true), null, 'active');
@@ -96,7 +88,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	            
 	            if (!stateLinkFunctions.active) {
 	                console.warn('The `observable` directive requires at least one child element.');
+	                return;
 	            }
+	            
+	            // Subscribe to the observable
+	            var observable = typeof source.subscribe === 'function'
+	                ?   source
+	                :   typeof source.then === 'function'
+	                    ?   liftPromise(source)
+	                    :   liftValue(source);
+	            var subscription = observable.subscribe(onNext, onError, onComplete);
 	            
 	            setState('loading', true);
 
