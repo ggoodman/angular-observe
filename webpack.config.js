@@ -1,7 +1,9 @@
-module.exports = {
+var _ = require('lodash');
+
+var baseConfig = {
     cache: true,
     entry: {
-        'angular-observe': __dirname + "/src/angular-observe.js",
+        'angular-observe': __dirname + "/compat/none",
     },
     output: {
         libraryTarget: "umd",
@@ -9,7 +11,7 @@ module.exports = {
         path: "./dist",
         pathInfo: false,
         // publicPath: "/static/",
-        filename: "angular-observe.js",
+        filename: "[name].js",
     },
     externals: {
         'angular': 'angular',
@@ -21,3 +23,31 @@ module.exports = {
         root: __dirname,
     },
 };
+
+module.exports = [
+    baseConfig,
+    _.defaultsDeep({
+        entry: {
+            'angular-observe.rx': __dirname + '/compat/rx',
+        },
+        externals: {
+            'rx': 'rx',
+        },
+    }, baseConfig),
+    _.defaultsDeep({
+        entry: {
+            'angular-observe.most': __dirname + '/compat/most',
+        },
+        externals: {
+            'most': 'most',
+        },
+    }, baseConfig),
+    _.defaultsDeep({
+        entry: {
+            'angular-observe.rx.next': __dirname + '/compat/rx.next',
+        },
+        externals: {
+            '@reactivex/rx': '@reactivex/rx',
+        },
+    }, baseConfig),
+];

@@ -4,15 +4,41 @@ module.exports = 'filearts.angularObserve';
 
 var mod = Angular.module(module.exports, []);
 
-mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function ($compile, $q, $rootScope, $timeout) {
+mod.provider('asyncBindConfig', [function () {
+    this.fromValue = function () {
+        throw new Error('You need to overwrite `asyncBindConfig.fromValue`.');
+    };
+    
+    this.fromPromise = function () {
+        throw new Error('You need to overwrite `asyncBindConfig.fromPromise`.');
+    };
+    
+    this.map = function () {
+        throw new Error('You need to overwrite `asyncBindConfig.map`.');
+    };
+    
+    this.switchMap = function () {
+        throw new Error('You need to overwrite `asyncBindConfig.switchMap`.');
+    };
+    
+    this.$get = function () {
+        return this;
+    };
+}]);
+
+mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', 'asyncBindConfig', function ($compile, $q, $rootScope, $timeout, asyncBindConfig) {
     return {
         restrict: 'EA',
         scope: true,
         compile: compile,
     };
     
-    function compile(tElement) {
-        var stateLinkFunctions = getStateLinkFunctions(tElement);
+    function compile(tElement, tAttrs) {
+        var sourceSpec = (tAttrs.asyncBind || tAttrs.source).split(/\s+as\s+/i);
+        var sourcePath = sourceSpec.shift().split('.');
+        var publishAlias = sourceSpec[0] || '$value';
+        var sourceModel = sourcePath.shift();
+        var stateLinkFunctions = getStateLinkFunctions(tElement, publishAlias);
         
         return function postLink($scope, $element, $attrs) {
             var childScope;
@@ -20,40 +46,53 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
             var subscription;
             var isolateScope = $rootScope.$new(true, $scope);
             
-            var sourceModel = $attrs.asyncBind || $attrs.source;
-            
             $element.empty();
             
             $scope.$watch(sourceModel, function (source) {
                 if (subscription) {
                     subscription.unsubscribe();
+                    subscription = null;
                 }
+                        
+                subscription = follow(sourcePath, source).subscribe(onNext, onError, onComplete);
                 
                 setState('loading');
                 
-                // Lift the source to an Observable-compatible interface
-                var observable = source && typeof source.subscribe === 'function'
-                    ?   source
-                    :   source && typeof source.then === 'function'
-                        ?   liftPromise(source)
-                        :   liftValue(source);
+                function atPath(path) {
+                    var first = path.shift();
+                    var rest = path;
+                    
+                    return function (next) {
+                        var child = next[first];
+                        
+                        return child
+                            ?   follow(rest, child)
+                            :   asyncBindConfig.fromValue();
+                    };
+                }
                 
-                // Subscribe to the observable
-                subscription = observable.subscribe(onNext, onError, onComplete);
+                function follow(path, source) {
+                    var observable = lift(source);
+                    
+                    return path.length
+                        ?   asyncBindConfig.switchMap.call(observable, atPath(path))
+                        :   observable;
+                }
             });
     
-            // Unsubscribe when this element is destroyed
+            // subscription when this element is destroyed
             $scope.$on('$destroy', function() {
                 if (subscription) {
                     subscription.unsubscribe();
+                    subscription = null;
                 }
             });
             
             function onNext(val) {
-                var forceLink = !isPrimitive(isolateScope.$value)
+                var forceLink = !isPrimitive(isolateScope[publishAlias])
                     || !isPrimitive(val);
                 
-                isolateScope.$value = val;
+                isolateScope[publishAlias] = val;
     
                 setState('active', forceLink);
                 
@@ -106,60 +145,16 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
         };
     }
     
-    function liftPromise(source) {
-        return {
-            subscribe: function (onNext, onError, onComplete) {
-                // I don't want to depend on any single Promise implementation
-                // so I can't rely on re-throwing the error. Instead, I guard
-                // on `failed` for the invocation of `onComplete`.
-                var failed = false;
-                
-                var _onNext = function (val) {
-                    onNext(val);
-                    
-                    return val;
-                };
-                
-                var _onError = function (val) {
-                    onError(val);
-                    
-                    failed = true;
-                };
-                
-                var _onComplete = function () {
-                    if (!failed) {
-                        onComplete();
-                    }
-                };
-                
-                source.then(_onNext, _onError, onNext)
-                    .then(_onComplete);
-                
-                return {
-                    unsubscribe: Angular.noop,
-                };
-            }
-        };
-    }
-    
-    function liftValue(source) {
-        return {
-            subscribe: function (onNext, onError, onComplete) {
-                // We are already using Angular so let's just leverage
-                // an existing service (`$timeout`) to fire the `onNext` and
-                // `onComplete` callbacks asynchronously.
-                $timeout(onNext.bind(null, source), 0, false)
-                    .then(onComplete);
-                
-                return {
-                    unsubscribe: Angular.noop,
-                };
-            }
-        };
+    function lift(source) {
+        return source && typeof source.subscribe === 'function'
+            ?   source
+            :   source && typeof source.then === 'function'
+                ?   asyncBindConfig.fromPromise(source)
+                :   asyncBindConfig.fromValue(source);
     }
 
 
-    function getStateLinkFunctions(tElement) {
+    function getStateLinkFunctions(tElement, publishAlias) {
         var stateLinkFunctions = {};
         var stateTemplates = {
             loading: [],
@@ -193,7 +188,7 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', function
         
         if (!hasStateTemplates) {
             if (!template.length) {
-                template.push(document.createTextNode('{{$value}}'));
+                template.push(document.createTextNode('{{' + publishAlias + '}}'));
             }
                 
             var clone = Angular.element(template).clone();

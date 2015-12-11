@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("angular"));
+		module.exports = factory(require("angular"), require("@reactivex/rx"));
 	else if(typeof define === 'function' && define.amd)
-		define(["angular"], factory);
+		define(["angular", "@reactivex/rx"], factory);
 	else if(typeof exports === 'object')
-		exports["AngularObserve"] = factory(require("angular"));
+		exports["AngularObserve"] = factory(require("angular"), require("@reactivex/rx"));
 	else
-		root["AngularObserve"] = factory(root["angular"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE_2__) {
+		root["AngularObserve"] = factory(root["angular"], root["@reactivex/rx"]);
+})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_3__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -54,7 +54,18 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var Angular = __webpack_require__(2);
+	var Rx = __webpack_require__(3);
+
 	module.exports = __webpack_require__(1);
+
+	Angular.module(module.exports)
+	    .config(['asyncBindConfigProvider', function (config) {
+	        config.fromPromise = Rx.Observable.fromPromise;
+	        config.fromValue = Rx.Observable.of;
+	        config.map = Rx.Observable.prototype.map;
+	        config.switchMap = Rx.Observable.prototype.switchMap;
+	    }]);
 
 /***/ },
 /* 1 */
@@ -269,6 +280,12 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports) {
 
 	module.exports = __WEBPACK_EXTERNAL_MODULE_2__;
+
+/***/ },
+/* 3 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_3__;
 
 /***/ }
 /******/ ])
