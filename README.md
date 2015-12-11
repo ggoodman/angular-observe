@@ -1,4 +1,4 @@
-# Introducing the `observe` directive
+# Introducing the `async-bind` directive
 
 Subscribe to an observable and render different markup depending on the observable's state.
 
