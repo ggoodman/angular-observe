@@ -47,7 +47,12 @@ module.exports = [
             'angular-observe.rx.next': __dirname + '/compat/rx.next',
         },
         externals: {
-            '@reactivex/rx': '@reactivex/rx',
+            '@reactivex/rx': {
+                commonjs: '@reactivex/rx',
+                commonjs2: '@reactivex/rx',
+                amd: 'rx',
+                root: 'rx'
+            },
         },
     }, baseConfig),
 ];
