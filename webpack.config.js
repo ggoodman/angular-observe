@@ -31,7 +31,12 @@ module.exports = [
             'angular-observe.rx': __dirname + '/compat/rx',
         },
         externals: {
-            'rx': 'rx',
+            'rx':  {
+                commonjs: 'rx',
+                commonjs2: 'rx',
+                amd: 'rx',
+                root: 'Rx'
+            },
         },
     }, baseConfig),
     _.defaultsDeep({
@@ -51,7 +56,7 @@ module.exports = [
                 commonjs: '@reactivex/rx',
                 commonjs2: '@reactivex/rx',
                 amd: 'rx',
-                root: 'rx'
+                root: 'Rx'
             },
         },
     }, baseConfig),

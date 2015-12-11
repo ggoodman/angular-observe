@@ -6,7 +6,7 @@
 	else if(typeof exports === 'object')
 		exports["AngularObserve"] = factory(require("angular"), require("@reactivex/rx"));
 	else
-		root["AngularObserve"] = factory(root["angular"], root["rx"]);
+		root["AngularObserve"] = factory(root["angular"], root["Rx"]);
 })(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_3__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
