@@ -1,5 +1,7 @@
 # Introducing the `async-bind` directive
 
+[![Join the chat at https://gitter.im/ggoodman/angular-observe](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ggoodman/angular-observe?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Subscribe to an observable and render different markup depending on the observable's state.
 
 ### Example with all four states defined:
