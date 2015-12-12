@@ -115,10 +115,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    subscription.unsubscribe();
 	                    subscription = null;
 	                }
-	                        
-	                subscription = follow(sourcePath, source).subscribe(onNext, onError, onComplete);
 	                
 	                setState('loading');
+	                        
+	                subscription = follow(sourcePath, source).subscribe(onNext, onError, onComplete);
 	                
 	                function atPath(path) {
 	                    var first = path.shift();
