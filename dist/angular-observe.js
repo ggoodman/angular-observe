@@ -102,13 +102,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var sourceModel = sourcePath.shift();
 	        var stateLinkFunctions = getStateLinkFunctions(tElement, publishAlias);
 	        
+	        tElement.empty();
+	        
 	        return function postLink($scope, $element, $attrs) {
 	            var childScope;
 	            var currentState;
 	            var subscription;
 	            var isolateScope = $rootScope.$new(true, $scope);
-	            
-	            $element.empty();
 	            
 	            $scope.$watch(sourceModel, function (source) {
 	                if (subscription) {
@@ -228,10 +228,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	        
 	        Angular.forEach(tElement.contents(), function (node) {
 	            switch (node.nodeName.toLowerCase()) {
-	                case 'loading': return stateTemplates.loading.push(node);
-	                case 'active': return stateTemplates.active.push(node);
-	                case 'error': return stateTemplates.error.push(node);
-	                case 'complete': return stateTemplates.complete.push(node);
+	                case 'loading': return stateTemplates.loading.push.apply(stateTemplates.loading, node.childNodes);
+	                case 'active': return stateTemplates.active.push.apply(stateTemplates.active, node.childNodes);
+	                case 'error': return stateTemplates.error.push.apply(stateTemplates.error, node.childNodes);
+	                case 'complete': return stateTemplates.complete.push.apply(stateTemplates.complete, node.childNodes);
 	                default: return template.push(node);
 	            }
 	        });
@@ -253,10 +253,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	                template.push(document.createTextNode('{{' + publishAlias + '}}'));
 	            }
 	                
-	            var clone = Angular.element(template).clone();
+	            var active = Angular.element(template).clone();
+	            var complete = Angular.element(template).clone();
 	            
-	            stateLinkFunctions.active = $compile(clone);
-	            stateLinkFunctions.complete = $compile(clone.clone());
+	            stateLinkFunctions.active = $compile(active);
+	            stateLinkFunctions.complete = $compile(complete);
 	        }
 	        
 	        return stateLinkFunctions;
