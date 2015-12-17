@@ -56,7 +56,7 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', 'asyncBi
                 
                 setState('loading');
                         
-                subscription = follow(sourcePath, source).subscribe(onNext, onError, onComplete);
+                subscription = follow(sourcePath.slice(), source).subscribe(onNext, onError, onComplete);
                 
                 function atPath(path) {
                     var first = path.shift();
