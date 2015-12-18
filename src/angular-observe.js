@@ -116,6 +116,7 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', 'asyncBi
             }
             
             function setState(state, forceLink) {
+                var setStateInner = function () {
                 if (forceLink || state !== currentState) {
                     var linkFunction = stateLinkFunctions[state];
                     
@@ -137,9 +138,12 @@ mod.directive('asyncBind', ['$compile', '$q', '$rootScope', '$timeout', 'asyncBi
                         $element.append(clone);
                     });
                 }
+                };
                 
                 if (!isolateScope.$root.$$phase) {
-                    isolateScope.$digest(true);
+                    isolateScope.$apply(setStateInner);
+                } else {
+                    setStateInner();
                 }
             }
         };
