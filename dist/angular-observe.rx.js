@@ -189,6 +189,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	            
 	            function setState(state, forceLink) {
+	                var setStateInner = function () {
 	                if (forceLink || state !== currentState) {
 	                    var linkFunction = stateLinkFunctions[state];
 	                    
@@ -210,9 +211,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        $element.append(clone);
 	                    });
 	                }
+	                };
 	                
 	                if (!isolateScope.$root.$$phase) {
-	                    isolateScope.$digest(true);
+	                    isolateScope.$apply(setStateInner);
+	                } else {
+	                    setStateInner();
 	                }
 	            }
 	        };
